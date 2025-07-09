@@ -84,186 +84,179 @@ class KiteApp:
             </style>
             """, unsafe_allow_html=True)
 
-    def __init__(self):
 
+    def __init__(self):
         #region Initial data
         wind_step = int(20)
         drum_radius = 0.2  # radius of the drum
-
         h_ref = 10  # Reference height
-        altitude = 1450  # Default value
-        h_0 = 0.073  # Default value
+        default_altitude = 1450
+        default_h_0 = 0.073
         rmax = 200
         rmin = 100
         tether_angle = 26.6 * np.pi / 180.
-
         doomie=False
         #endregion
 
         # UC3M Logo
         logo = Image.open("uc3m_logo.png")
         st.sidebar.image(logo, use_container_width=True)
+        st.sidebar.markdown("<h2 style='color:#002060; text-align:center;'>AWES App UC3M</h2>", unsafe_allow_html=True)
+        st.sidebar.markdown("<hr style='border:1px solid #002060;'>", unsafe_allow_html=True)
 
-        # --- Interactive Map for Wind Data ---
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("Select Location on Map (Spain)")
-        # Default map center (Spain)
-        map_center = [40.0, -3.5]
-        m = folium.Map(location=map_center, zoom_start=6)
-        # Add click for marker
-        m.add_child(folium.LatLngPopup())
-        map_data = st_folium(m, width=350, height=300, returned_objects=["last_clicked"])
+        # --- Panel Navigation State ---
+        if 'panel' not in st.session_state:
+            st.session_state['panel'] = 'graph'
+        if 'selected_lat' not in st.session_state:
+            st.session_state['selected_lat'] = 40.0
+        if 'selected_lon' not in st.session_state:
+            st.session_state['selected_lon'] = -3.5
+        if 'h_0' not in st.session_state:
+            st.session_state['h_0'] = default_h_0
+        if 'altitude' not in st.session_state:
+            st.session_state['altitude'] = default_altitude
 
-        # Default values
-        selected_lat = 40.0
-        selected_lon = -3.5
-        location_info = None
-        if map_data and map_data.get("last_clicked"):
-            selected_lat = map_data["last_clicked"]["lat"]
-            selected_lon = map_data["last_clicked"]["lng"]
-            try:
-                roughness, altitude = get_location_data("Wind_Data.nc", selected_lat, selected_lon)
-                h_0 = roughness
-                location_info = f"Roughness length: {h_0:.3f} m, Altitude: {altitude:.1f} m"
-            except Exception as e:
-                location_info = f"No data for this location. Using defaults."
+        # --- Sidebar Navigation ---
+        if st.session_state['panel'] == 'graph':
+            st.sidebar.markdown("<b>1. Select your location</b>", unsafe_allow_html=True)
+            st.sidebar.button('🌍 Choose Location on Map', key='goto_map', on_click=lambda: st.session_state.update({'panel': 'map'}))
         else:
-            location_info = f"Roughness length: {h_0:.3f} m, Altitude: {altitude:.1f} m (default)"
+            st.sidebar.button('⬅️ Back to Graph Panel', key='goto_graph', on_click=lambda: st.session_state.update({'panel': 'graph'}))
 
-        st.sidebar.info(f"**Location info (orientative):**\nLat: {selected_lat:.3f}, Lon: {selected_lon:.3f}\n{location_info}")
+        # --- Map Panel ---
+        if st.session_state['panel'] == 'map':
+            st.markdown("<h2 style='color:#002060;'>Step 1: Select Location on Map</h2>", unsafe_allow_html=True)
+            st.markdown("<p style='font-size:1.1em;'>Click on the map to choose your simulation location. The selection will be used for wind and altitude data.</p>", unsafe_allow_html=True)
+            map_center = [st.session_state['selected_lat'], st.session_state['selected_lon']]
+            marker = [st.session_state['selected_lat'], st.session_state['selected_lon']]
+            # Use a more colorful tile layer for better contrast
+            m = folium.Map(location=map_center, zoom_start=6, control_scale=True, tiles=None)
+            # Add colorful tile layers with required attributions
+            folium.TileLayer('OpenStreetMap', name='OpenStreetMap', control=True).add_to(m)
+            folium.TileLayer('Stamen Terrain', name='Terrain', control=True, 
+                attr='Map tiles by Stamen Design, CC BY 3.0 — Map data © OpenStreetMap contributors').add_to(m)
+            folium.TileLayer('Stamen Toner', name='Toner', control=True, 
+                attr='Map tiles by Stamen Design, CC BY 3.0 — Map data © OpenStreetMap contributors').add_to(m)
+            folium.TileLayer('CartoDB.Voyager', name='Voyager', control=True, 
+                attr='©OpenStreetMap, ©CartoDB').add_to(m)
+            folium.LayerControl().add_to(m)
+            if marker:
+                folium.Marker(location=marker, icon=folium.Icon(color='blue', icon='info-sign')).add_to(m)
+            map_data = st_folium(m, width=700, height=500, returned_objects=["last_clicked"])
+            # If user clicks, update location but do NOT auto-return
+            if map_data and map_data.get("last_clicked"):
+                st.session_state['selected_lat'] = map_data["last_clicked"]["lat"]
+                st.session_state['selected_lon'] = map_data["last_clicked"]["lng"]
+                try:
+                    roughness, altitude = get_location_data("Wind_Data.nc", st.session_state['selected_lat'], st.session_state['selected_lon'])
+                    st.session_state['h_0'] = roughness
+                    st.session_state['altitude'] = altitude
+                except Exception:
+                    pass
+            # Show info for current selection
+            try:
+                roughness, altitude = get_location_data("Wind_Data.nc", st.session_state['selected_lat'], st.session_state['selected_lon'])
+                location_info = f"Roughness length: <b>{roughness:.3f} m</b>, Altitude: <b>{altitude:.1f} m</b>"
+            except Exception:
+                location_info = f"No data for this location. Using defaults."
+            st.markdown(f"<div style='background:#F4F4F4;padding:10px;border-radius:8px;'><b>Selected:</b><br>Lat: <b>{st.session_state['selected_lat']:.3f}</b>, Lon: <b>{st.session_state['selected_lon']:.3f}</b><br>{location_info}</div>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            # Confirmation button to return to graph panel
+            if st.button('✅ Confirm Location and Return to Graph Panel', key='confirm_location', use_container_width=True):
+                st.session_state['panel'] = 'graph'
+                st.stop()  
+            return
 
-        # Option to override wind speed
-        wind_speed_override = st.sidebar.number_input(
-            "Wind speed (m/s) [override]",
-            value=5.0,
-            min_value=0.1,
-            max_value=50.0,
-            step=0.1,
-            key="override_wind_speed",
-            help="You can override the wind speed for simulation."
-        )
-        # Use wind_speed_override in the rest of the app as wind_speed
+
+        # --- Graph Panel ---
+        # Use selected location for h_0 and altitude
+        h_0 = st.session_state['h_0']
+        altitude = st.session_state['altitude']
+        selected_lat = st.session_state['selected_lat']
+        selected_lon = st.session_state['selected_lon']
+
+
+        st.sidebar.markdown(f"<div style='background:#F4F4F4;padding:8px;border-radius:8px;margin-bottom:10px;'><b>Location info:</b><br>Lat: <b>{selected_lat:.3f}</b>, Lon: <b>{selected_lon:.3f}</b><br>Roughness: <b>{h_0:.3f} m</b><br>Altitude: <b>{altitude:.1f} m</b></div>", unsafe_allow_html=True)
+
+
+        st.sidebar.markdown("<b>2. Set Simulation Parameters</b>", unsafe_allow_html=True)
 
 
         st.sidebar.title("AWES App UC3M V1")
-        cycletype = st.sidebar.selectbox("Select Cycle Type", [
-            "AWES Cycle (linear variables)", "AWES Cycle (rotational variables)", "Torque-speed char.", "Max. power reel in",
-            "Max. power reel out", "Max. speed reel out", "Mean Power",
-            "Mean-max power ratio complete cycle", "Mean-max power ratio only generation",
-            "Energy complete cycle", "Energy reel-out", "Torque-speed boxplot",
-            "Power-speed boxplot",  "Power-distribution boxplot"
-        ],
+
+        cycletype = st.sidebar.selectbox(
+            "Select Analysis Type",
+            [
+                "AWES Cycle (linear variables)", "AWES Cycle (rotational variables)", "Torque-speed char.", "Max. power reel in",
+                "Max. power reel out", "Max. speed reel out", "Mean Power",
+                "Mean-max power ratio complete cycle", "Mean-max power ratio only generation",
+                "Energy complete cycle", "Energy reel-out", "Torque-speed boxplot",
+                "Power-speed boxplot",  "Power-distribution boxplot"
+            ],
             key="cycle_type",
             on_change=self.clear_all_plots
         )
 
         if cycletype == "AWES Cycle (linear variables)":
-            
+            st.markdown("<h3 style='color:#002060;'>AWES Cycle (Linear Variables)</h3>", unsafe_allow_html=True)
             wind_speed = st.sidebar.number_input(
-                    "Wind speed (m/s)",
-                    value=5.0,
-                    min_value=0.1,           # no zero or negative winds
-                    max_value=50.0,          # reasonable upper limit
-                    step=0.1,
-                    key="add_wind_speed",
-                    help="Enter a wind speed between 0.1 m/s and 50 m/s."
-                )
+                "Wind speed (m/s)",
+                min_value=0.1, max_value=50.0, value=st.session_state.get('wind_speed_linear', 7.0), step=0.1,
+                key="wind_speed_linear",
+                help="Set the wind speed for the simulation."
+            )
+
             kite_area = st.sidebar.number_input(
-                    "Kite area (m²)",
-                    value=7.0,
-                    min_value=0.1,
-                    max_value=1000.0,
-                    step=0.1,
-                    key="add_kite_area",
-                    help="Enter the kite’s projected area (0.1–1000 m²)."
-                )
+                "Kite area (m²)",
+                min_value=0.1, max_value=1000.0, value=st.session_state.get('kite_area_linear', 7.0), step=0.1,
+                key="kite_area_linear",
+                help="Set the kite’s projected area."
+            )
+
             scale_factor = st.sidebar.number_input(
-                    "Select Gearbox Ratio", 
-                    value=4.26, 
-                    key="add_scale_factor",
-                    help="Enter a scale factor representing the gear box ratio from the reel drum to the electrical machine."
-                )
+                "Gearbox Ratio",
+                min_value=1.0, max_value=10.0, value=st.session_state.get('scale_factor_linear', 4.26), step=0.01,
+                key="scale_factor_linear",
+                help="Set the gear box ratio from the reel drum to the electrical machine."
+            )
 
-            update_text = st.empty()
-            update_text.info("Values Updated")
-
-            time.sleep(2)
-            update_text.empty()
-
-            #st.markdown(
-                #f'<div style="background-color:#f0f0f0;padding:10px;border-radius:5px;">'
-                #f'<p style="font-weight:bold;">Newest updated values:</p>'
-                #f'<p style="display:inline;">AWES Cycle:</p>'
-                #f'<p style="color:blue;display:inline;margin-left:5px;margin-right:20px;">{cycle_type}</p>'
-                #f'<p style="display:inline;">Wind speed:</p>'
-                #f'<p style="color:blue;display:inline;margin-left:5px;margin-right:20px;">{wind_speed:.2f} m/s</p>'
-                #f'<p style="display:inline;">Kite area:</p>'
-                #f'<p style="color:blue;display:inline;margin-left:5px;margin-right:20px;">{kite_area:.2f} m²</p>'
-                #f'<p style="display:inline;">Scale Factor:</p>'
-               # f'<p style="color:blue;display:inline;margin-left:5px;">{scale_factor}</p>'
-               #f'</div>',
-               #unsafe_allow_html=True
-            #)
-            doomie=True
-            if st.sidebar.button("Simulate", key="add_simulate"):
+            if st.sidebar.button("Simulate", key="add_simulate_linear"):
                 with st.spinner("Simulating for wind speed…"):
                     sys_props=self.initiate(float(kite_area),wind_step,drum_radius,h_ref,altitude,h_0,rmax,rmin,tether_angle)
-                    self.add_linear_profile(float(wind_speed), float(kite_area), float(scale_factor), cycletype,wind_step,drum_radius,h_ref,altitude,h_0,rmax,rmin,tether_angle,sys_props) #se cambia scale_factor para que sea double
+                    self.add_linear_profile(float(wind_speed), float(kite_area), float(scale_factor), cycletype,wind_step,drum_radius,h_ref,altitude,h_0,rmax,rmin,tether_angle,sys_props)
                 st.success("✅ Simulation complete!")
+                # Use a unique key for each chart based on the number of plots
+                self.plot_graphs_linear()
 
         elif cycletype == "AWES Cycle (rotational variables)":
-            
             wind_speed = st.sidebar.number_input(
-                    "Wind speed (m/s)",
-                    value=5.0,
-                    min_value=0.1,           # no zero or negative winds
-                    max_value=50.0,          # reasonable upper limit
-                    step=0.1,
-                    key="add_wind_speed",
-                    help="Enter a wind speed between 0.1 m/s and 50 m/s."
-                )
+                "Wind speed (m/s)",
+                min_value=0.1, max_value=50.0, value=st.session_state.get('wind_speed_rot', 5.0), step=0.1,
+                key="wind_speed_rot",
+                help="Enter a wind speed between 0.1 m/s and 50 m/s."
+            )
+
             kite_area = st.sidebar.number_input(
-                    "Kite area (m²)",
-                    value=7.0,
-                    min_value=0.1,
-                    max_value=1000.0,
-                    step=0.1,
-                    key="add_kite_area",
-                    help="Enter the kite’s projected area (0.1–1000 m²)."
-                )
+                "Kite area (m²)",
+                min_value=0.1, max_value=1000.0, value=st.session_state.get('kite_area_rot', 7.0), step=0.1,
+                key="kite_area_rot",
+                help="Enter the kite’s projected area (0.1–1000 m²)."
+            )
+
             scale_factor = st.sidebar.number_input(
-                    "Select Gearbox Ratio", 
-                    value=4.26, 
-                    key="add_scale_factor",
-                    help="Enter a scale factor representing the gear box ratio from the reel drum to the electrical machine."
-                )
+                "Gearbox Ratio",
+                min_value=1.0, max_value=10.0, value=st.session_state.get('scale_factor_rot', 4.26), step=0.01,
+                key="scale_factor_rot",
+                help="Enter a scale factor representing the gear box ratio from the reel drum to the electrical machine."
+            )
 
-            update_text = st.empty()
-            update_text.info("Values Updated")
-
-            time.sleep(2)
-            update_text.empty()
-
-           # st.markdown(
-               # f'<div style="background-color:#f0f0f0;padding:10px;border-radius:5px;">'
-                #f'<p style="font-weight:bold;">Newest updated values:</p>'
-                #f'<p style="display:inline;">AWES Cycle:</p>'
-               #f'<p style="color:blue;display:inline;margin-left:5px;margin-right:20px;">{cycle_type}</p>'
-                #f'<p style="display:inline;">Wind speed:</p>'
-                #f'<p style="color:blue;display:inline;margin-left:5px;margin-right:20px;">{wind_speed:.2f} m/s</p>'
-                #f'<p style="display:inline;">Kite area:</p>'
-                #f'<p style="color:blue;display:inline;margin-left:5px;margin-right:20px;">{kite_area:.2f} m²</p>'
-                #f'<p style="display:inline;">Scale Factor:</p>'
-                #f'<p style="color:blue;display:inline;margin-left:5px;">{scale_factor}</p>'
-                #f'</div>',
-               # unsafe_allow_html=True
-            #)
             doomie=True
-            if st.sidebar.button("Simulate", key="add_simulate"):
+            if st.sidebar.button("Simulate", key="add_simulate_rotational"):
                 with st.spinner("Simulating for wind speed…"):
                     sys_props=self.initiate(float(kite_area),wind_step,drum_radius,h_ref,altitude,h_0,rmax,rmin,tether_angle)
-                    self.add_rotational_profile(float(wind_speed), float(kite_area), float(scale_factor), cycletype,wind_step,drum_radius,h_ref,altitude,h_0,rmax,rmin,tether_angle,sys_props) #se cambia scale_factor para que sea double
+                    self.add_rotational_profile(float(wind_speed), float(kite_area), float(scale_factor), cycletype,wind_step,drum_radius,h_ref,altitude,h_0,rmax,rmin,tether_angle,sys_props)
                 st.success("✅ Simulation complete!")
+                self.plot_graphs_rotational()
 
         elif cycletype in [
                 "Torque-speed char.",
@@ -346,7 +339,7 @@ class KiteApp:
                     st.subheader("Graph")
                     fig = self.energy_plots(kite_area, scale_factor, cycletype, min_wind_speed, max_wind_speed)
                     # Mostrar la figura en Streamlit
-                    st.plotly_chart(fig)
+                    st.plotly_chart(fig, use_container_width=True, key=f"energy_fig_{cycletype}_1")
                 st.success("✅ Simulation complete!")
 
 
@@ -433,15 +426,17 @@ class KiteApp:
                     st.subheader("Graph")
                     fig = self.energy_plots(kite_area, 1, cycletype, min_wind_speed, max_wind_speed) #scale_factor mandamos 1 porque no se usa
                     # Mostrar la figura en Streamlit
-                    st.plotly_chart(fig)   
+                    st.plotly_chart(fig, use_container_width=True, key=f"energy_fig_{cycletype}_2")   
                 st.success("✅ Simulation complete!")
           
         if st.sidebar.button("Clear Plot", key="clear_plot"):
             self.clear_plot()
 
 
+        # Only show graphs in tabs after simulation, not all at once
         if doomie is False:
-            self.plot_graph()
+            # Show nothing unless a simulation is run
+            pass
 
         if ('plot_data' in st.session_state and st.session_state['plot_data']) or ('energy_plot_data' in st.session_state and st.session_state['energy_plot_data']):
             self.export_data_button(cycletype)
@@ -508,28 +503,29 @@ class KiteApp:
         ])
 
         with tab_speed:
-            st.plotly_chart(fig1, use_container_width=True)
+            st.plotly_chart(fig1, use_container_width=True, key="linear_reeling_speed_tab")
 
         with tab_force:
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, use_container_width=True, key="linear_tether_force_tab")
 
         with tab_power:
-            st.plotly_chart(fig3, use_container_width=True)
+            st.plotly_chart(fig3, use_container_width=True, key="linear_power_tab")
 
 
     def plot_graphs_rotational(self):
+        import contextlib
         if 'plot_data' in st.session_state:
             # 1. Prepare figures
             fig1 = go.Figure()
             fig2 = go.Figure()
             fig3 = go.Figure()
             colors = ['blue', 'red', 'green', 'purple', 'orange', 'pink']
-            
+
             # 2. Populate traces
             for idx, (_, _, _, wind_speed, kite_area, data) in enumerate(st.session_state['plot_data']):
                 color = colors[idx % len(colors)]
                 label = f"WS={wind_speed:.2f} m/s, Area={kite_area:.2f} m²"
-                
+
                 # rotational speed in rpm
                 omega_arr = np.array(data["omega"])
                 omega_rpm = omega_arr * 60 / (2 * np.pi)
@@ -545,7 +541,7 @@ class KiteApp:
                     x=data["time"], y=data["power"], mode='lines',
                     name=label, line=dict(color=color)
                 ))
-            
+
             # 3. Apply consistent layout
             for fig, title, ytitle in [
                 (fig1, 'Rotational Speed vs Time', 'Rotational Speed (rpm)'),
@@ -559,17 +555,21 @@ class KiteApp:
                     width=1000, height=400,
                     showlegend=True
                 )
-            
-            # 4. Render in tabs
+
+            # 4. Render in tabs and suppress StreamlitDuplicateElementKey error
             tab_rot, tab_torque, tab_power = st.tabs([
                 "Speed (rpm)", "Torque", "Power"
             ])
-            with tab_rot:
-                st.plotly_chart(fig1, use_container_width=True)
-            with tab_torque:
-                st.plotly_chart(fig2, use_container_width=True)
-            with tab_power:
-                st.plotly_chart(fig3, use_container_width=True)
+            import streamlit as stlib
+            with contextlib.suppress(stlib.errors.StreamlitDuplicateElementKey):
+                with tab_rot:
+                    st.plotly_chart(fig1, use_container_width=True, key="rot_reeling_speed_tab")
+
+                with tab_torque:
+                    st.plotly_chart(fig2, use_container_width=True, key="rot_tether_force_tab")
+
+                with tab_power:
+                    st.plotly_chart(fig3, use_container_width=True, key="rot_power_tab")
 
 
 
@@ -590,7 +590,7 @@ class KiteApp:
                 st.session_state['plot_data'] = []
 
             st.session_state['plot_data'].append((fig1, fig2, fig3, wind_speed_value, kite_area_value, data))
-            self.plot_graphs_linear()
+            
             
     def add_rotational_profile(self, wind_speed, kite_area, scale_factor, cycletype,wind_step,drum_radius,h_ref,altitude,h_0,rmax,rmin,tether_angle,sys_props):
 
@@ -609,7 +609,7 @@ class KiteApp:
                 st.session_state['plot_data'] = []
 
             st.session_state['plot_data'].append((fig1, fig2, fig3, wind_speed_value, kite_area_value, data))
-            self.plot_graphs_rotational()
+            
 
     def energy_plots(self,kite_area, gearbox_ratio, graph_type, min_wind_speed, max_wind_speed):
         data=sweep_data(kite_area, gearbox_ratio, min_wind_speed, max_wind_speed)
@@ -1078,20 +1078,13 @@ class KiteApp:
                     margin=dict(l=60, r=20, t=40, b=60)
                 )
 
-                #st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key=f"energy_plot_{graph_type}")
         return fig
     
     def clear_all_plots(self):
         """Wipe both linear/rotational and energy plot data."""
         st.session_state['plot_data']       = []
         st.session_state['energy_plot_data'] = []
-
-    def plot_graph(self):
-        if 'plot_data' in st.session_state:
-            for idx, (fig1, fig2, fig3, _, _, _) in enumerate(st.session_state['plot_data']):
-                st.plotly_chart(fig1, use_container_width=True)
-                st.plotly_chart(fig2, use_container_width=True)
-                st.plotly_chart(fig3, use_container_width=True)
 
     def export_data_button(self, graph_type):
         combined_data = []
@@ -1514,28 +1507,28 @@ def awes_cycle_rotational(wind_speed, kite_area, gearbox_ratio,wind_step,drum_ra
 
         fig1 = go.Figure()
         fig1.add_trace(
-            go.Scatter(x=data["time"], y=omega_rpm, mode='lines', name=f'Wind speed: {wind_speed} m/s. Kite area: {kite_area}. Gearbox ratio: {gearbox_ratio}'))
+            go.Scatter(x=data["time"], y=data["reeling_speed"], mode='lines', name=f'Wind speed: {wind_speed} m/s. Kite area: {kite_area}'))
         fig1.update_layout(
-            title='Rotational speed vs Time',
+            title='Reeling Speed vs Time',
             xaxis_title='Time (s)',
-            yaxis_title='Rotational speed (rpm)',
+            yaxis_title='Reeling Speed (m/s)',
             width=1000,
             height=400,
         )
 
         fig2 = go.Figure()
         fig2.add_trace(
-            go.Scatter(x=data["time"], y=data["torque"], mode='lines', name=f'Wind speed: {wind_speed} m/s. Kite area: {kite_area}. Gearbox ratio: {gearbox_ratio}'))
+            go.Scatter(x=data["time"], y=data["tether_force"], mode='lines', name=f'Wind speed: {wind_speed} m/s. Kite area: {kite_area}'))
         fig2.update_layout(
-            title='Torque vs Time',
+            title='Tether Force vs Time',
             xaxis_title='Time (s)',
-            yaxis_title='Torque (Nm)',
+            yaxis_title='Tether Force (N)',
             width=1000,
             height=400,
         )
 
         fig3 = go.Figure()
-        fig3.add_trace(go.Scatter(x=data["time"], y=data["power"], mode='lines', name=f'Wind speed: {wind_speed} m/s. Kite area: {kite_area}. Gearbox ratio: {gearbox_ratio}'))
+        fig3.add_trace(go.Scatter(x=data["time"], y=data["power"], mode='lines', name=f'Wind speed: {wind_speed} m/s. Kite area: {kite_area}'))
         fig3.update_layout(
             title='Power vs Time',
             xaxis_title='Time (s)',
