@@ -1,6 +1,7 @@
 #python -m streamlit run AWES_app_copy_version20250709.py
 #http://192.168.1.79:8501
 
+
 import streamlit as st
 import numpy as np
 from PIL import Image
@@ -10,6 +11,10 @@ from numba import njit
 import pandas as pd
 from qsm import Cycle, LogProfile, SystemProperties, TractionPhase
 import plotly.graph_objs as go
+# For map and NetCDF
+import folium
+from streamlit_folium import st_folium
+from location_utils import get_location_data
 
 
 
@@ -86,21 +91,58 @@ class KiteApp:
         drum_radius = 0.2  # radius of the drum
 
         h_ref = 10  # Reference height
-        altitude = 1450  # Sta. María de la Alameda
-        h_0 = 0.073  # Roughness length Vortex data
+        altitude = 1450  # Default value
+        h_0 = 0.073  # Default value
         rmax = 200
         rmin = 100
         tether_angle = 26.6 * np.pi / 180.
 
         doomie=False
         #endregion
-        
-        #st.set_option('deprecation.showPyplotGlobalUse', False)
-
 
         # UC3M Logo
         logo = Image.open("uc3m_logo.png")
         st.sidebar.image(logo, use_container_width=True)
+
+        # --- Interactive Map for Wind Data ---
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("Select Location on Map (Spain)")
+        # Default map center (Spain)
+        map_center = [40.0, -3.5]
+        m = folium.Map(location=map_center, zoom_start=6)
+        # Add click for marker
+        m.add_child(folium.LatLngPopup())
+        map_data = st_folium(m, width=350, height=300, returned_objects=["last_clicked"])
+
+        # Default values
+        selected_lat = 40.0
+        selected_lon = -3.5
+        location_info = None
+        if map_data and map_data.get("last_clicked"):
+            selected_lat = map_data["last_clicked"]["lat"]
+            selected_lon = map_data["last_clicked"]["lng"]
+            try:
+                roughness, altitude = get_location_data("Wind_Data.nc", selected_lat, selected_lon)
+                h_0 = roughness
+                location_info = f"Roughness length: {h_0:.3f} m, Altitude: {altitude:.1f} m"
+            except Exception as e:
+                location_info = f"No data for this location. Using defaults."
+        else:
+            location_info = f"Roughness length: {h_0:.3f} m, Altitude: {altitude:.1f} m (default)"
+
+        st.sidebar.info(f"**Location info (orientative):**\nLat: {selected_lat:.3f}, Lon: {selected_lon:.3f}\n{location_info}")
+
+        # Option to override wind speed
+        wind_speed_override = st.sidebar.number_input(
+            "Wind speed (m/s) [override]",
+            value=5.0,
+            min_value=0.1,
+            max_value=50.0,
+            step=0.1,
+            key="override_wind_speed",
+            help="You can override the wind speed for simulation."
+        )
+        # Use wind_speed_override in the rest of the app as wind_speed
 
 
         st.sidebar.title("AWES App UC3M V1")
