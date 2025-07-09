@@ -13,13 +13,6 @@ import plotly.graph_objs as go
 
 
 
-def energy_calc(times, powers):
-
-    diffs = np.diff(times)
-    powered_values = powers[:-1] * diffs
-    result = np.sum(powered_values)
-    return result
-
 st.set_page_config(page_title="AWES App UC3M", layout="wide")
 
 
