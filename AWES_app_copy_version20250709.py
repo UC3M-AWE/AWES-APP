@@ -97,10 +97,10 @@ class KiteApp:
         doomie=False
         #endregion
 
+
         # UC3M Logo
         logo = Image.open("uc3m_logo.png")
         st.sidebar.image(logo, use_container_width=True)
-        st.sidebar.markdown("<h2 style='color:#002060; text-align:center;'>AWES App UC3M</h2>", unsafe_allow_html=True)
         st.sidebar.markdown("<hr style='border:1px solid #002060;'>", unsafe_allow_html=True)
 
         # --- Panel Navigation State ---
@@ -115,12 +115,19 @@ class KiteApp:
         if 'altitude' not in st.session_state:
             st.session_state['altitude'] = default_altitude
 
+
+        # --- Main Title ---
+        st.markdown("<h1 style='color:#002060; text-align:center;'>AWES App UC3M</h1>", unsafe_allow_html=True)
+
         # --- Sidebar Navigation ---
         if st.session_state['panel'] == 'graph':
+            st.sidebar.button('❓ How does this app work?', key='goto_help_sidebar', on_click=lambda: st.session_state.update({'panel': 'help'}))
             st.sidebar.markdown("<b>1. Select your location</b>", unsafe_allow_html=True)
             st.sidebar.button('🌍 Choose Location on Map', key='goto_map', on_click=lambda: st.session_state.update({'panel': 'map'}))
-        else:
+        elif st.session_state['panel'] == 'map':
             st.sidebar.button('⬅️ Back to Graph Panel', key='goto_graph', on_click=lambda: st.session_state.update({'panel': 'graph'}))
+        elif st.session_state['panel'] == 'help':
+            st.sidebar.button('⬅️ Back to Graph Panel', key='goto_graph_from_help', on_click=lambda: st.session_state.update({'panel': 'graph'}))
 
         # --- Map Panel ---
         if st.session_state['panel'] == 'map':
@@ -166,6 +173,50 @@ class KiteApp:
                 st.stop()  
             return
 
+        # --- Help/Info Panel ---
+        if st.session_state['panel'] == 'help':
+            st.markdown("""
+                <h2 style='color:#002060;'>How does this app work?</h2>
+                <p style='font-size:1.1em;'>
+                This application simulates the performance of an Airborne Wind Energy System (AWES) using a <b>Quasi-Steady Model (QSM)</b>.<br><br>
+                <b>Model Used:</b><br>
+                The QSM is based on the work of R. Van der Vlugt et al. (<a href='https://arxiv.org/abs/1705.04133' target='_blank'>Quasi-Steady Model of a Pumping Kite Power System</a>). It models the kite, tether, and ground station as a set of coupled physical equations, assuming the system is always in a steady state at each simulation step.<br><br>
+                <b>Simulation Logic:</b><br>
+                - The kite's motion is divided into phases: <b>traction</b> (power generation), <b>retraction</b> (tether reeling in), and <b>transition</b>.<br>
+                - For each phase, the model solves for the forces, speeds, and power using the QSM equations.<br>
+                - The wind profile is modeled using a logarithmic law or look-up tables, and air density is adjusted for altitude.<br>
+                - The simulation outputs time series for key variables (speed, force, power, etc.) and aggregates results for each cycle.<br><br>
+                <b>What do the simulation types do?</b>
+                </p>
+            """, unsafe_allow_html=True)
+            with st.expander("ℹ️ What does each analysis type mean? (click to expand)", expanded=False):
+                st.markdown(
+                    """
+                    **AWES Cycle (linear variables):**
+                    Simulates a full kite power cycle using *linear* variables: **reeling speed** (how fast the tether is reeled in or out, in m/s), **tether force** (N), and **power** (W). This mode focuses on the direct mechanical motion of the tether. Calculations are based on the linear speed of the drum and the force in the tether, which is most relevant for mechanical design and understanding the energy transfer from the kite to the ground station.
+                    
+                    **AWES Cycle (rotational variables):**
+                    Simulates a full cycle using *rotational* variables: **rotational speed** (generator/drum rpm), **torque** (Nm), and **power** (W). This mode focuses on the drivetrain and generator side, showing how the system behaves in terms of rotation and torque. Calculations use the angular speed of the drum and the torque transmitted through the gearbox, which is important for generator and electrical system analysis.
+                    
+                    **Performance vs. Wind Speed (e.g., Max/Mean Power, Energy, Speed):**
+                    These options simulate the system over a *range of wind speeds* to show how output power, energy, or speed changes with wind conditions. Useful for performance curves and site assessment.
+                    
+                    **Boxplots (Torque-Speed, Power-Speed, Power-Distribution):**
+                    These plots summarize the distribution of key variables (like power or torque) across all simulated wind speeds, showing median, quartiles, and outliers. Useful for visualizing variability and extremes.
+                    
+                    *Tip: Choose the analysis type that matches the aspect of the AWES you want to study: mechanical (linear), electrical (rotational), or statistical (boxplots/performance curves).*
+                    """
+                )
+            st.markdown("""
+                <br>
+                <b>How are the plots generated?</b><br>
+                - When you select a simulation type and parameters, the app runs the QSM for the chosen scenario.<br>
+                - The results are visualized using interactive Plotly charts.<br>
+                - You can export the data for further analysis.<br><br>
+                <b>For more details, see the <a href='https://arxiv.org/abs/1705.04133' target='_blank'>original QSM paper</a> or review the <code>qsm.py</code> source code in this project.</b>
+            """, unsafe_allow_html=True)
+            st.stop()
+
 
         # --- Graph Panel ---
         # Use selected location for h_0 and altitude
@@ -181,26 +232,6 @@ class KiteApp:
 
         st.sidebar.markdown("<b>2. Set Simulation Parameters</b>", unsafe_allow_html=True)
 
-        # --- Collapsible help box for cycle type explanations ---
-        with st.sidebar.expander("ℹ️ What does each analysis type mean? (click to expand)", expanded=False):
-            st.markdown(
-                """
-                **AWES Cycle (linear variables):**
-                Simulates a full kite power cycle using *linear* variables: **reeling speed** (how fast the tether is reeled in or out, in m/s), **tether force** (N), and **power** (W). This mode focuses on the direct mechanical motion of the tether. Calculations are based on the linear speed of the drum and the force in the tether, which is most relevant for mechanical design and understanding the energy transfer from the kite to the ground station.
-                
-                **AWES Cycle (rotational variables):**
-                Simulates a full cycle using *rotational* variables: **rotational speed** (generator/drum rpm), **torque** (Nm), and **power** (W). This mode focuses on the drivetrain and generator side, showing how the system behaves in terms of rotation and torque. Calculations use the angular speed of the drum and the torque transmitted through the gearbox, which is important for generator and electrical system analysis.
-                
-                **Performance vs. Wind Speed (e.g., Max/Mean Power, Energy, Speed):**
-                These options simulate the system over a *range of wind speeds* to show how output power, energy, or speed changes with wind conditions. Useful for performance curves and site assessment.
-                
-                **Boxplots (Torque-Speed, Power-Speed, Power-Distribution):**
-                These plots summarize the distribution of key variables (like power or torque) across all simulated wind speeds, showing median, quartiles, and outliers. Useful for visualizing variability and extremes.
-                
-                *Tip: Choose the analysis type that matches the aspect of the AWES you want to study: mechanical (linear), electrical (rotational), or statistical (boxplots/performance curves).*
-                """
-            )
-
         cycletype = st.sidebar.selectbox(
             "Select Analysis Type",
             [
@@ -208,7 +239,7 @@ class KiteApp:
                 "Max. power reel out", "Max. speed reel out", "Mean Power",
                 "Mean-max power ratio complete cycle", "Mean-max power ratio only generation",
                 "Energy complete cycle", "Energy reel-out", "Torque-speed boxplot",
-                "Power-speed boxplot",  "Power-distribution boxplot"
+                "Power-speed boxplot",  "Power-distribution boxplot (reel-out)", "Power-distribution boxplot (reel-in)"
             ],
             key="cycle_type",
             on_change=self.clear_all_plots
@@ -246,6 +277,7 @@ class KiteApp:
                 self.plot_graphs_linear()
 
         elif cycletype == "AWES Cycle (rotational variables)":
+            st.markdown("<h3 style='color:#002060;'>AWES Cycle (Rotational Variables)</h3>", unsafe_allow_html=True)
             wind_speed = st.sidebar.number_input(
                 "Wind speed (m/s)",
                 min_value=0.1, max_value=50.0, value=st.session_state.get('wind_speed_rot', 5.0), step=0.1,
@@ -282,6 +314,7 @@ class KiteApp:
                 "Torque-speed boxplot",
                 "Power-speed boxplot",
             ]:
+            st.markdown(f"<h3 style='color:#002060;'>{cycletype}</h3>", unsafe_allow_html=True)
             
                         # Sidebar
             kite_area = st.sidebar.number_input(
@@ -372,8 +405,10 @@ class KiteApp:
                 "Mean-max power ratio only generation",
                 "Energy complete cycle",
                 "Energy reel-out",
-                "Power-distribution boxplot" ,
+                "Power-distribution boxplot (reel-out)",
+                "Power-distribution boxplot (reel-in)"
             ]:
+            st.markdown(f"<h3 style='color:#002060;'>{cycletype}</h3>", unsafe_allow_html=True)
             
 
             # Sidebar
@@ -1045,7 +1080,7 @@ class KiteApp:
                     showlegend=False
                 )
 
-            elif graph_type == "Power-distribution boxplot":
+            elif graph_type == "Power-distribution boxplot (reel-out)":
                 winds = data["wind"]    # e.g. [5.0, 5.263, 5.526, …]
                 powers = data["power"]  # list of lists
 
@@ -1087,6 +1122,50 @@ class KiteApp:
                     tickfont=dict(size=24),
                 )
 
+                fig.update_layout(
+                    width=1000,
+                    height=600,
+                    showlegend=False,
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=60, r=20, t=40, b=60)
+                )
+
+            elif graph_type == "Power-distribution boxplot (reel-in)":
+                winds = data["wind"]
+                retraction_powers = data["retraction_power"]
+
+                # Bin by integer wind-speed:
+                speed_bins = {}
+                for ws, p_list in zip(winds, retraction_powers):
+                    bin_ws = int(round(ws))
+                    neg = [p for p in p_list if p < 0]
+                    if not neg:
+                        continue
+                    speed_bins.setdefault(bin_ws, []).extend(neg)
+
+                boxes = []
+                for ws_int in sorted(speed_bins):
+                    boxes.append(go.Box(
+                        y=speed_bins[ws_int],
+                        name=f"{ws_int}",
+                        boxpoints=False,  # Hide all points, show only the box
+                        jitter=0.3,
+                        whiskerwidth=0.2,
+                        marker=dict(size=8, opacity=1, color='blue'),
+                        line=dict(width=2, color='blue'),
+                    ))
+                fig = go.Figure(data=boxes)
+
+                fig.update_xaxes(
+                    title="Wind speed (m/s)",
+                    title_font=dict(size=26),
+                    tickfont=dict(size=24),
+                )
+                fig.update_yaxes(
+                    title="Reel-in Power (W)",
+                    title_font=dict(size=26),
+                    tickfont=dict(size=24),
+                )
                 fig.update_layout(
                     width=1000,
                     height=600,
@@ -1574,7 +1653,8 @@ def sweep_data(kite_area, gearbox_ratio, min_wind_speed, max_wind_speed):
         "power": [],
         "torque": [],
         "omega": [],
-        "mean_power": []
+        "mean_power": [],
+        "retraction_power": []  
     }
     gearbox_ratio=float(gearbox_ratio)
     kite_area=float(kite_area)
@@ -1669,11 +1749,27 @@ def sweep_data(kite_area, gearbox_ratio, min_wind_speed, max_wind_speed):
             data["omega"].append(omegas)
             # Calculate the mean power and add it to the dictionary
             mean_power = sum(power_ground) / len(power_ground)
-            
-
             data["mean_power"].append(mean_power)
 
-        except:
+            # --- Extract retraction phase power values ---
+            # Try to get the retraction phase power values from the 'retraction' object if available
+            retraction_power_list = []
+            if retraction is not None:
+                # Try to get power at ground for each time step in the retraction phase
+                try:
+                    if hasattr(retraction, 'steady_states'):
+                        retraction_power_list = [getattr(s, 'power_ground', None) for s in retraction.steady_states]
+                        # Remove None values if any
+                        retraction_power_list = [p for p in retraction_power_list if p is not None]
+                except Exception:
+                    retraction_power_list = []
+            # Fallback: if not available, just use negative power values from the full cycle
+            if not retraction_power_list:
+                retraction_power_list = [p for p in power_ground if p < 0]
+            data["retraction_power"].append(retraction_power_list)
+
+        except Exception as e:
+            # Optionally print or log e for debugging
             pass
 
     return data
