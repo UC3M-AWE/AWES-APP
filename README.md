@@ -44,10 +44,10 @@ The folder and file structure for this project is:
 AWES-APP/
 │
 ├── app/                        # Source code folder
+│   ├── location_utils.py                 
 │   ├── main.py                 # Main Streamlit app
 │   ├── qsm.py
 │   ├── utils.py
-│   ├── location_utils.py
 │   └── ...
 │
 ├── data/
@@ -56,9 +56,9 @@ AWES-APP/
 ├── assets/
 │   └── uc3m_logo.png
 │
+├── .gitignore
 ├── README.md
 ├── requirements.txt
-├── .gitignore
 ```
 
 This structure keeps code, data, and assets organized for easier maintenance and collaboration.
