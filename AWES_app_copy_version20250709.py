@@ -8,12 +8,12 @@ from PIL import Image
 import time
 import concurrent.futures
 import pandas as pd
-from qsm import Cycle, LogProfile, SystemProperties, TractionPhase
+from app.qsm import Cycle, LogProfile, SystemProperties, TractionPhase
 import plotly.graph_objs as go
 # For map and NetCDF
 import folium
 from streamlit_folium import st_folium
-from location_utils import get_location_data
+from app.location_utils import get_location_data
 
 
 

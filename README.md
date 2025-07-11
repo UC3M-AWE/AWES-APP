@@ -27,12 +27,26 @@ AWES-APP is a web-based simulation and analysis tool for Airborne Wind Energy Sy
    - Integrates with ERA5 NetCDF data for realistic site-specific simulation.
 
 ## Usage
+
 1. **Install Requirements:**
    - Python 3.8+
-   - Streamlit
-   - Plotly
-   - NumPy, Pandas
-   - netCDF4 (for location data)
+   - The following Python packages are required:
+     - streamlit
+     - numpy
+     - pillow
+     - pandas
+     - plotly
+     - folium
+     - streamlit-folium
+     - netCDF4 (for location data)
+   - You can install them all at once with:
+     ```bash
+     pip install streamlit numpy pillow pandas plotly folium streamlit-folium netCDF4
+     ```
+   - Or, if a `requirements.txt` file is present:
+     ```bash
+     pip install -r requirements.txt
+     ```
 
 2. **Run the App:**
    ```bash
