@@ -197,7 +197,7 @@ class KiteApp:
                 **Boxplots (Torque-Speed, Power-Speed, Power-Distribution):**
                 These plots summarize the distribution of key variables (like power or torque) across all simulated wind speeds, showing median, quartiles, and outliers. Useful for visualizing variability and extremes.
                 
-                *Tip: Choose the analysis type that matches the aspect of the AWES you want to study—mechanical (linear), electrical (rotational), or statistical (boxplots/performance curves).*
+                *Tip: Choose the analysis type that matches the aspect of the AWES you want to study: mechanical (linear), electrical (rotational), or statistical (boxplots/performance curves).*
                 """
             )
 
@@ -1072,7 +1072,7 @@ class KiteApp:
                         opacity=0
                     ),              # <-- single marker dict
                     line=dict(width=1),
- ))
+  ))
                 fig = go.Figure(data=boxes)
 
                 # 2) Make all fonts BIGGER:
@@ -1094,8 +1094,6 @@ class KiteApp:
                     plot_bgcolor="rgba(0,0,0,0)",
                     margin=dict(l=60, r=20, t=40, b=60)
                 )
-
-                st.plotly_chart(fig, use_container_width=True, key=f"energy_plot_{graph_type}")
         return fig
     
     def clear_all_plots(self):
