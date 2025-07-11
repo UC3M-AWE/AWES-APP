@@ -99,7 +99,7 @@ class KiteApp:
 
 
         # UC3M Logo
-        logo = Image.open("uc3m_logo.png")
+        logo = Image.open("assets/uc3m_logo.png")
         st.sidebar.image(logo, use_container_width=True)
         st.sidebar.markdown("<hr style='border:1px solid #002060;'>", unsafe_allow_html=True)
 
@@ -154,14 +154,14 @@ class KiteApp:
                 st.session_state['selected_lat'] = map_data["last_clicked"]["lat"]
                 st.session_state['selected_lon'] = map_data["last_clicked"]["lng"]
                 try:
-                    roughness, altitude = get_location_data("Wind_Data.nc", st.session_state['selected_lat'], st.session_state['selected_lon'])
+                    roughness, altitude = get_location_data("data/Wind_Data.nc", st.session_state['selected_lat'], st.session_state['selected_lon'])
                     st.session_state['h_0'] = roughness
                     st.session_state['altitude'] = altitude
                 except Exception:
                     pass
             # Show info for current selection
             try:
-                roughness, altitude = get_location_data("Wind_Data.nc", st.session_state['selected_lat'], st.session_state['selected_lon'])
+                roughness, altitude = get_location_data("data/Wind_Data.nc", st.session_state['selected_lat'], st.session_state['selected_lon'])
                 location_info = f"Roughness length: <b>{roughness:.3f} m</b>, Altitude: <b>{altitude:.1f} m</b>"
             except Exception:
                 location_info = f"No data for this location. Using defaults."
