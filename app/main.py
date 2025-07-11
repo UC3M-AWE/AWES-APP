@@ -1,4 +1,4 @@
-#python -m streamlit run AWES_app_copy_version20250709.py
+#python -m streamlit run app/main.py
 #http://192.168.1.79:8501
 
 
