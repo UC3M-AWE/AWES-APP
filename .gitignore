@@ -1,2 +1,10 @@
 __pycache__/
 .vscode/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+.DS_Store
+.env
