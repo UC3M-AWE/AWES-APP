@@ -7,7 +7,6 @@ import numpy as np
 from PIL import Image
 import time
 import concurrent.futures
-from numba import njit
 import pandas as pd
 from qsm import Cycle, LogProfile, SystemProperties, TractionPhase
 import plotly.graph_objs as go
@@ -179,10 +178,28 @@ class KiteApp:
         st.sidebar.markdown(f"<div style='background:#F4F4F4;padding:8px;border-radius:8px;margin-bottom:10px;'><b>Location info:</b><br>Lat: <b>{selected_lat:.3f}</b>, Lon: <b>{selected_lon:.3f}</b><br>Roughness: <b>{h_0:.3f} m</b><br>Altitude: <b>{altitude:.1f} m</b></div>", unsafe_allow_html=True)
 
 
+
         st.sidebar.markdown("<b>2. Set Simulation Parameters</b>", unsafe_allow_html=True)
 
-
-        st.sidebar.title("AWES App UC3M V1")
+        # --- Collapsible help box for cycle type explanations ---
+        with st.sidebar.expander("ℹ️ What does each analysis type mean? (click to expand)", expanded=False):
+            st.markdown(
+                """
+                **AWES Cycle (linear variables):**
+                Simulates a full kite power cycle using *linear* variables: **reeling speed** (how fast the tether is reeled in or out, in m/s), **tether force** (N), and **power** (W). This mode focuses on the direct mechanical motion of the tether. Calculations are based on the linear speed of the drum and the force in the tether, which is most relevant for mechanical design and understanding the energy transfer from the kite to the ground station.
+                
+                **AWES Cycle (rotational variables):**
+                Simulates a full cycle using *rotational* variables: **rotational speed** (generator/drum rpm), **torque** (Nm), and **power** (W). This mode focuses on the drivetrain and generator side, showing how the system behaves in terms of rotation and torque. Calculations use the angular speed of the drum and the torque transmitted through the gearbox, which is important for generator and electrical system analysis.
+                
+                **Performance vs. Wind Speed (e.g., Max/Mean Power, Energy, Speed):**
+                These options simulate the system over a *range of wind speeds* to show how output power, energy, or speed changes with wind conditions. Useful for performance curves and site assessment.
+                
+                **Boxplots (Torque-Speed, Power-Speed, Power-Distribution):**
+                These plots summarize the distribution of key variables (like power or torque) across all simulated wind speeds, showing median, quartiles, and outliers. Useful for visualizing variability and extremes.
+                
+                *Tip: Choose the analysis type that matches the aspect of the AWES you want to study—mechanical (linear), electrical (rotational), or statistical (boxplots/performance curves).*
+                """
+            )
 
         cycletype = st.sidebar.selectbox(
             "Select Analysis Type",
@@ -446,7 +463,7 @@ class KiteApp:
         # 1. Pad all data series to the same max_time
         all_times = [d["time"] for *_, d in st.session_state['plot_data']]
         max_time = max(max(t) for t in all_times)
-        dt = 0.01  # must match your simulation time step
+        dt = 0.04  # must match your sim4lation time step
 
         for *_, data in st.session_state['plot_data']:
             t = data["time"]
