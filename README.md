@@ -26,7 +26,44 @@ AWES-APP is a web-based simulation and analysis tool for Airborne Wind Energy Sy
    - Supports advanced analysis types, including boxplots for power distribution (reel-in/reel-out), mean/max ratios, and more.
    - Integrates with ERA5 NetCDF data for realistic site-specific simulation.
 
-## Usage
+
+## Access the App Online
+
+You can use the AWES-APP directly in your browser (no installation required) via Streamlit Cloud:
+
+👉 [Launch AWES-APP Online](https://uc3mawesapp.streamlit.app/)
+
+---
+
+
+## Repository Structure
+
+The folder and file structure for this project is:
+
+```
+AWES-APP/
+│
+├── app/                        # Source code folder
+│   ├── main.py                 # Main Streamlit app
+│   ├── qsm.py
+│   ├── utils.py
+│   ├── location_utils.py
+│   └── ...
+│
+├── data/
+│   └── Wind_Data.nc
+│
+├── assets/
+│   └── uc3m_logo.png
+│
+├── README.md
+├── requirements.txt
+├── .gitignore
+```
+
+This structure keeps code, data, and assets organized for easier maintenance and collaboration.
+
+---
 
 1. **Install Requirements:**
    - Python 3.8+
