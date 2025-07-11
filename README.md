@@ -31,7 +31,7 @@ AWES-APP is a web-based simulation and analysis tool for Airborne Wind Energy Sy
 
 You can use the AWES-APP directly in your browser (no installation required) via Streamlit Cloud:
 
-👉 [Launch AWES-APP Online](https://uc3mawesapp.streamlit.app/)
+[Launch AWES-APP Online](https://uc3mawesapp.streamlit.app/)
 
 ---
 
